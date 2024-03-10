@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Coin Data</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f0f0f0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            h1 {
+                margin-bottom: 20px;
+            }
+            .container {
+                max-width: 800px;
+                width: 100%;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                padding: 20px;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+            .card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            .card img {
+                max-width: 100px;
+                margin-bottom: 10px;
+            }
+            .card p {
+                margin-bottom: 10px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+            }
+            th,
+            td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+            canvas {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 20px;
+                min-width: 100%;
+                margin-bottom: 20px;
+            }
+            button {
+                padding: 10px 20px;
+
+                border: none;
+
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <button onclick="goBack()">< Go Back</button>
+            <h1>Coin Details</h1>
+            <div id="coinDetails" class="card"></div>
+            <h2>Price History ( Last 24h )</h2>
+
+            <canvas id="chart"></canvas>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Price</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="coinData"></tbody>
+            </table>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const urlParams = new URLSearchParams(window.location.search);
+            const coin = urlParams.get("coin");
+            fetch(`http://127.0.0.1:3000/api/details/?coin=${coin}`)
+                .then((response) => response.json())
+                .then((data) => {
+                    const coinDetails = document.getElementById("coinDetails");
+                    const coin = data.data.coin;
+                    const card = `
+                    <div >
+                    <img src="${coin.iconUrl}" alt="${coin.name}" />
+                        <h2>${coin.name} (${coin.symbol})</h2>
+                        <p>${coin.description}</p>
+
+                        <p>Website: <a href="${coin.websiteUrl}" target="_blank">${coin.websiteUrl}</a></p>
+                        <p>Number of Markets: ${coin.numberOfMarkets}</p>
+                        <p>Number of Exchanges: ${coin.numberOfExchanges}</p>
+                        <p>24h Volume: ${coin["24hVolume"]}</p>
+                        <p>Market Cap: ${coin.marketCap}</p>
+                        <p>Fully Diluted Market Cap: ${coin.fullyDilutedMarketCap}</p>
+                        <p>Price: ${coin.price}</p>
+                        <p>BTC Price: ${coin.btcPrice}</p>
+                        <p>Change: ${coin.change}</p>
+                        <p>Rank: ${coin.rank}</p>
+                        <p>All Time High Price: ${coin.allTimeHigh.price}</p>
+                        <p>Tags: ${coin.tags.join(", ")}</p>
+                    </div>
+                `;
+                    coinDetails.innerHTML = card;
+                })
+                .catch((error) => console.error("Error:", error));
+
+            fetch(`http://127.0.0.1:3000/api/prices/coin/?coin=${coin}`)
+                .then((response) => response.json())
+                .then((data) => {
+                    const coinData = document.getElementById("coinData");
+                    const chartData = {
+                        labels: data.data.history.map((entry) =>
+                            new Date(entry.timestamp * 1000).toLocaleString(),
+                        ),
+                        datasets: [
+                            {
+                                label: "Price",
+                                data: data.data.history.map(
+                                    (entry) => entry.price,
+                                ),
+                                borderColor: "rgb(75, 192, 192)",
+                                tension: 0.1,
+                            },
+                        ],
+                    };
+                    const ctx = document
+                        .getElementById("chart")
+                        .getContext("2d");
+                    new Chart(ctx, {
+                        type: "line",
+                        data: chartData,
+                    });
+                    data.data.history.forEach((entry) => {
+                        const timestamp = new Date(
+                            entry.timestamp * 1000,
+                        ).toLocaleString();
+                        const row = `
+                        <tr>
+                            <td>${entry.price}</td>
+                            <td>${timestamp}</td>
+                        </tr>
+                    `;
+                        coinData.insertAdjacentHTML("beforeend", row);
+                    });
+                })
+                .catch((error) => console.error("Error:", error));
+
+            function goBack() {
+                window.history.back();
+            }
+        </script>
+    </body>
+</html>
